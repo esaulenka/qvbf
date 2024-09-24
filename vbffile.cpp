@@ -119,6 +119,8 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 
 	//looking for such template: header { }
 	offset = h.indexOf("header {");
+	if (offset < 0)
+		offset = h.indexOf("header\n{");
 	if (offset == -1) {
 		qWarning() << "can't find begin of header";
 		infile.close();
