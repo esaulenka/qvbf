@@ -488,7 +488,6 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 			crc32 = crc32_calc(crc32, l);
 
 			outfile.write(cdata);
-			crc16 = crc16_calc(crc16, cdata);
 			crc32 = crc32_calc(crc32, cdata);
 		}
 		else {
@@ -499,10 +498,11 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 			crc32 = crc32_calc(crc32, l);
 
 			outfile.write(block.data);
-			crc16 = crc16_calc(crc16, block.data);
 			crc32 = crc32_calc(crc32, block.data);
 		}
 
+		// calculated on non-compressed data!
+		crc16 = crc16_calc(crc16, block.data);
 		crc16 = qToBigEndian<quint16>(crc16);
 		QByteArray c((const char *)&crc16, sizeof(crc16));
 		outfile.write(c);
