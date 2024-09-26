@@ -145,7 +145,7 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 	}
 
 	header_t header;
-	header.file_checksum_offset = h.indexOf("0x", offset + 13);
+	header.file_checksum_offset = h.indexOf("0x", offset - 13);
 	offset = h.indexOf("}", offset);
 
 	offset = h.indexOf("}", offset);
