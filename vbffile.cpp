@@ -126,7 +126,7 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 		infile.close();
 		return false;
 	}
-	offset += sizeof"header {";
+	offset += sizeof("header {");
 	size_t left_braces = 1;
 	size_t right_braces = 0;
 	while (offset < h.size()) {
@@ -147,7 +147,13 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 	}
 
 	header_t header;
-	header.file_checksum_offset = h.indexOf("0x", offset - 13);
+	int file_checksum_offset = h.indexOf("0x", offset - sizeof("0x12345678;\n}"));
+	if (file_checksum_offset == -1) {
+		qWarning() << "can't find checksum offset";
+		infile.close();
+		return false;
+	}
+	header.file_checksum_offset = file_checksum_offset;
 	offset = h.indexOf("}", offset);
 
 	offset = h.indexOf("}", offset);
@@ -300,9 +306,10 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 
 		if (vbf.header.data_format_identifier_exist && vbf.header.data_format_identifier == 0x10) {
 
+			qDebug() << "uncompress block data ...";
 			QByteArray udata = decode(block.data);
 			block.data = udata;
-			qDebug() << "uncompress block data: " << block.len << " to "<< udata.size();
+			qDebug() << "block data was uncompessed from " << block.len << " to "<< udata.size() << " bytes";
 			crc16 = crc16_init();
 			crc16 = crc16_calc(crc16, block.data);
 		}
@@ -313,7 +320,7 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 		crc32 = crc32_calc(crc32, QByteArray(_crc, 2));
 		uint16_t _crc16 = qFromBigEndian<quint16>(_crc);
 
-		qDebug().nospace() << "block addr: 0x" << hex << block.addr << " len: 0x" << block.len << " data: 0x" << block.data.size() << " _crc16: 0x" << _crc16 << " crc16: 0x" << crc16;
+		qDebug().nospace() << "block addr: 0x" << hex << block.addr << " len: 0x" << block.len << " data: 0x" << block.data.size() << " crc16: 0x" << _crc16 << "(0x" << crc16 << ")";
 		if (_crc16 == crc16) {
 
 			vbf.blocks.push_back(block);
@@ -460,7 +467,7 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 		return;
 	}
 
-	//write header
+	qDebug().nospace() << "save the header (" << vbf.header.data.size() << " bytes)";
 	outfile.write(vbf.header.data);
 
 	uint32_t crc32 = crc32_init();
@@ -472,7 +479,7 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 
 		const block_t & block = vbf.blocks[i];
 
-		qDebug() << "save block with size" << block.len;
+		qDebug().nospace() << "save block 0x" << hex << block.addr << " with size " << dec << block.len;
 
 		uint32_t addr = qToBigEndian<quint32>(block.addr);
 		QByteArray a((const char *)&addr, sizeof(addr));
@@ -481,8 +488,9 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 
 		if (vbf.header.data_format_identifier_exist && vbf.header.data_format_identifier == 0x10) {
 
+			qDebug() << "compress block data ...";
 			QByteArray cdata = encode(block.data);
-			qDebug() << "compress block data: " << block.data.size() << " to "<< cdata.size();
+			qDebug() << "block data was compressed from " << block.data.size() << " to "<< cdata.size() << " bytes";
 
 			uint32_t len = qToBigEndian<quint32>(cdata.size());
 			QByteArray l((const char *)&len, sizeof(len));
@@ -514,11 +522,15 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 
 	//rewrite updated header
 	QByteArray header = vbf.header.data;
-	//if (vbf.header.data_format_identifier_exist && vbf.header.data_format_identifier == 0x10) {
+	if (vbf.header.file_checksum_offset + sizeof("0x12345678;\n}") <= (uint32_t)header.size()) {
 
+		qDebug().nospace() << "resave the header (" << vbf.header.data.size() << " bytes)";
 		QByteArray ba = QString("0x%1").arg(crc32, 8, 16, QChar('0')).toLatin1();
 		header.replace(vbf.header.file_checksum_offset, ba.size(), ba);
-	//}
+	}
+	else
+		qWarning() << "Cannot update file checksum!";
+
 	outfile.seek(0);
 	outfile.write(header);
 
