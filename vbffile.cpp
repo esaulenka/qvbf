@@ -538,7 +538,9 @@ void vbf_save(const QString & fileName, const vbf_t & vbf)
 	if (vbf.header.file_checksum_offset + sizeof("0x12345678;\n}") <= (uint32_t)header.size()) {
 
 		qDebug().nospace() << "resave the header (" << vbf.header.data.size() << " bytes)";
-		QByteArray ba = QString("0x%1").arg(crc32, 8, 16, QChar('0')).toLatin1();
+		QString hex_crc32 = QString("%1").arg(crc32, 8, 16, QChar('0')).toLatin1().toUpper();
+		hex_crc32 = "0x" + hex_crc32;
+		QByteArray ba = hex_crc32.toLatin1();
 		header.replace(vbf.header.file_checksum_offset, ba.size(), ba);
 	}
 	else
