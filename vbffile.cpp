@@ -147,14 +147,6 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 	}
 
 	header_t header;
-	int file_checksum_offset = h.indexOf("0x", offset - sizeof("0x12345678;\n}"));
-	if (file_checksum_offset == -1) {
-		qWarning() << "can't find checksum offset";
-		infile.close();
-		return false;
-	}
-	header.file_checksum_offset = file_checksum_offset;
-	offset = h.indexOf("}", offset);
 
 	offset = h.indexOf("}", offset);
 	if (offset != -1)
@@ -167,8 +159,12 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 	QBuffer qbuf(&header.data);
 	qbuf.open(QBuffer::ReadOnly);
 
+	int file_checksum_offset = -1;
+
 	QString line;
 	while (!qbuf.atEnd()) {
+
+		quint64 pos = qbuf.pos();
 
 		QString l = qbuf.readLine();
 		//qDebug() << l;
@@ -245,8 +241,10 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 		if (list[0] == "call")
 			header.call = list[2].toLongLong(&ok, 16);
 
-		if (list[0] == "file_checksum")
+		if (list[0] == "file_checksum") {
 			header.file_checksum = list[2].toLongLong(&ok, 16);
+			file_checksum_offset = header.data.indexOf("0x", pos);
+		}
 
 		if (list[0] == "data_format_identifier") {
 
@@ -254,6 +252,15 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 			header.data_format_identifier = list[2].toLongLong(&ok, 16);
 		}
 	}
+
+	qDebug() << "file_checksum_offset:" << file_checksum_offset;
+	if (file_checksum_offset == -1) {
+		qWarning() << "can't find checksum offset";
+		infile.close();
+		return false;
+	}
+	header.file_checksum_offset = file_checksum_offset;
+
 	qbuf.close();
 
 	vbf.filename = fileName;
