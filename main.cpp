@@ -129,7 +129,7 @@ void main_t::slt_btn_open()
 void main_t::slt_btn_save()
 {
 	QString fileName;
-	fileName = QFileDialog::getSaveFileName(this, tr("Save vbf file"), QString(".") + QDir::separator() + QString("new.vbf"), tr("vbf (*.vbf)"));
+	fileName = QFileDialog::getSaveFileName(this, tr("Save vbf file"), QString(".") + QDir::separator() + QString("new.vbf"), tr("vbf (*.vbf *.VBF)"));
 
 	if (fileName.isEmpty())
 		return;
