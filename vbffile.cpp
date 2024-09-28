@@ -286,18 +286,24 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 		crc32 = crc32_calc(crc32, QByteArray(_len, 4));
 		block.len = qFromBigEndian<quint32>(_len);
 
-		qDebug().nospace() << "found block addr:0x" << hex << block.addr << " with size:0x" << hex << block.len << ", loading ...";
+		quint64 pos = infile.pos();
+		quint64 rem = infile.size() - pos;
+
+		qDebug().nospace() << "block found at position:0x" << hex << pos << " with addr:0x" << hex << block.addr << " and len:0x" << hex << block.len;
+		qDebug().nospace() << "rest of file " << dec << rem << "(0x" << hex << rem <<")" << ", loading ...";
+
 		block.data.reserve((block.len < BLOCK_LIMIT_SIZE) ? block.len : BLOCK_LIMIT_SIZE);
 
-		block.offset = infile.pos();
+		block.offset = pos;
 		uint16_t crc16 = crc16_init();
 		size_t nums = block.len/CHUNK_SIZE;
 		nums = block.len % CHUNK_SIZE ? (nums + 1) : nums;
 		for (size_t i = 0; i < nums; i++) {
 
 			size_t sz = CHUNK_SIZE;
+			//last chank
 			if (i == (nums - 1))
-				sz = block.len % CHUNK_SIZE;
+				sz = (block.len % CHUNK_SIZE) ? (block.len % CHUNK_SIZE) : CHUNK_SIZE;
 
 			QByteArray chunk = infile.read(sz);
 			QCoreApplication::processEvents();
@@ -327,7 +333,7 @@ bool vbf_open(const QString & fileName, vbf_t & vbf)
 		crc32 = crc32_calc(crc32, QByteArray(_crc, 2));
 		uint16_t _crc16 = qFromBigEndian<quint16>(_crc);
 
-		qDebug().nospace() << "block addr: 0x" << hex << block.addr << " len: 0x" << block.len << " data: 0x" << block.data.size() << " crc16: 0x" << _crc16 << "(0x" << crc16 << ")";
+		qDebug().nospace() << "block loaded with addr: 0x" << hex << block.addr << " len: 0x" << block.len << " data: 0x" << block.data.size() << " crc16: 0x" << _crc16 << "(0x" << crc16 << ")";
 		if (_crc16 == crc16) {
 
 			vbf.blocks.push_back(block);
